@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:batch="http://www.springframework.org/schema/batch"
+	xmlns:cloud="http://schema.cloudfoundry.org/spring" xmlns:task="http://www.springframework.org/schema/task"
+	xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+	xsi:schemaLocation="http://www.springframework.org/schema/integration http://www.springframework.org/schema/integration/spring-integration-2.1.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://schema.cloudfoundry.org/spring http://schema.cloudfoundry.org/spring/cloudfoundry-spring-0.8.xsd
+		http://www.springframework.org/schema/batch 
+        http://www.springframework.org/schema/batch/spring-batch-2.1.xsd
+        http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task-3.1.xsd
+        http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc-3.1.xsd">
+
+	<task:annotation-driven />
+
+	<batch:job-repository id="jobRepository" />
+
+	<bean id="jobLauncher"
+		class="org.springframework.batch.core.launch.support.SimpleJobLauncher">
+		<property name="jobRepository" ref="jobRepository" />
+	</bean>
+
+	<bean
+		class="org.springframework.batch.core.configuration.support.JobRegistryBeanPostProcessor">
+		<property name="jobRegistry" ref="jobRegistry" />
+	</bean>
+
+	<bean id="jobRegistry"
+		class="org.springframework.batch.core.configuration.support.MapJobRegistry" />
+
+	<batch:job id="filterTweets" job-repository="jobRepository">
+		<batch:step id="step1">
+			<batch:tasklet transaction-manager="transactionManager">
+				<batch:chunk reader="twitterFileItemReader" processor="tweetProcessor"
+					writer="tweetWriter" commit-interval="2" />
+			</batch:tasklet>
+		</batch:step>
+	</batch:job>
+
+	<bean id="twitterFileItemReader" class="org.springframework.batch.item.file.FlatFileItemReader">
+		<property name="resource" value="classpath:data/twitter/input/tweets" />
+		<property name="lineMapper">
+			<bean class="org.springframework.batch.item.file.mapping.DefaultLineMapper">
+				<property name="lineTokenizer">
+					<bean
+						class="org.springframework.batch.item.file.transform.DelimitedLineTokenizer">
+						<property name="names" value="user,text,retweets" />
+					</bean>
+				</property>
+				<property name="fieldSetMapper">
+					<bean
+						class="org.cloudfoundry.workers.twitter.batch.TwitterFieldSetMapper" />
+				</property>
+			</bean>
+		</property>
+	</bean>
+
+	<bean id="tweetProcessor"
+		class="org.cloudfoundry.workers.twitter.batch.TwitterFilterProcessor">
+		<constructor-arg>
+			<list>
+				<value>Cloud Foundry</value>
+				<value>PAAS</value>
+			</list>
+		</constructor-arg>
+	</bean>
+
+	<bean id="tweetWriter"
+		class="org.springframework.batch.item.database.JdbcBatchItemWriter">
+		<property name="itemSqlParameterSourceProvider">
+			<bean
+				class="org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider" />
+		</property>
+		<property name="sql"
+			value="INSERT INTO TWEETS(USER_NAME, TWEET_TEXT, RETWEETS ) VALUES ( :user, :text, :retweets)" />
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+
+	<bean class="org.cloudfoundry.workers.twitter.batch.NightlyTweetRecorder">
+		<constructor-arg ref="jobLauncher" />
+		<constructor-arg ref="filterTweets" />
+	</bean>
+	
+	<bean id="transactionManager"
+		class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+
+	<beans profile="default">
+	    <jdbc:embedded-database id="dataSource"/>
+		<jdbc:initialize-database data-source="dataSource" ignore-failures="DROPS">
+			<jdbc:script location="classpath:org/springframework/batch/core/schema-hsqldb.sql" />
+			<jdbc:script location="classpath:tweets_hsqldb.sql" />
+		</jdbc:initialize-database>
+	</beans>
+
+	<beans profile="cloud">
+		<cloud:data-source id="dataSource" />
+		<jdbc:initialize-database data-source="dataSource" ignore-failures="DROPS">
+			<jdbc:script location="classpath:org/springframework/batch/core/schema-mysql.sql" />
+			<jdbc:script location="classpath:tweets_mysql.sql" />
+		</jdbc:initialize-database>
+	</beans>
+
+</beans>
