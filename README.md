@@ -33,52 +33,23 @@ You can modify the search terms in the TweetProcessor bean definition in context
 
 ## Compiling and Pushing the Application to Cloud Foundry
 
-The application is configured with the Maven appassembler plugin, which will create a distribution directory and a start script that can be pushed to Cloud Foundry using the `vmc push` command:
+The application is configured with the Maven appassembler plugin, which will create a distribution directory and a start script that can be pushed to Cloud Foundry using the `vmc push` command.  Use the provided manifest to push to Cloud Foundry.
 
     > mvn package
-    > vmc push tweet-worker --path=target/appassembler
-    Would you like to deploy from the current directory? [Yn]: y
-    Detected a Standalone Application, is this correct? [Yn]: y
-    1: java
-    2: java7
-    3: node
-    4: node06
-    5: ruby18
-    6: ruby19
-    Select Runtime [java]: 1
-    Selected java
-    Start Command: bin/demo
-    Application Deployed URL [None]: vertx-socks-sample.cloudfoundry.com
-    Memory reservation (128M, 256M, 512M, 1G, 2G) [64M]: 256M
-    How many instances? [1]:
-    Bind existing services to 'tweet-worker'? [yN]: n
-    Create services to bind to 'tweet-worker'? [yN]: y
-	1: mongodb
-	2: mysql
-	3: postgresql
-	4: rabbitmq
-	5: redis
-	What kind of service?: 2
-	Specify the name of the service [mysql-771fd]: tweet-db
-	Create another? [yN]: n
-    Would you like to save this configuration? [yN]: y
-    Manifest written to manifest.yml.
-    Creating Application: OK
-    Uploading Application:
-        Checking for available resources: OK
-        Processing resources: OK
-        Packing application: OK
-        Uploading (43K): OK
-    Push Status: OK
-    Staging Application 'tweet-worker': OK
-    Starting Application 'tweet-worker': OK
-
-The important responses the `vmc push` prompts are these:
-
-* Choose `Standalone Application`
-* Choose `java` runtime
-* Set the `Start Command` as shown
-* Set the `Memory reservation` to at least `256M`
+    > vmc push
+    Would you like to deploy from the current directory? [Yn]: 
+	Pushing application 'tweet-worker'...
+	Creating Application: OK
+	Creating Service [tweet-db]: OK
+	Binding Service [tweet-db]: OK
+	Uploading Application:
+	  Checking for available resources: OK
+	  Processing resources: OK
+	  Packing application: OK
+	  Uploading (19K): OK   
+	Push Status: OK
+	Staging Application 'tweet-worker': OK                                          
+	Starting Application 'tweet-worker': OK
 
 Now we can run 'vmc logs' to see if we are processing tweets:
 

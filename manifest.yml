@@ -1,0 +1,18 @@
+--- 
+applications: 
+  target/appassembler: 
+    name: tweet-worker
+    framework: 
+      name: standalone
+      info: 
+        mem: 64M
+        description: Standalone Application
+        exec: 
+    runtime: java
+    command: bin/demo
+    url: 
+    mem: 256M
+    instances: 1
+    services: 
+      tweet-db: 
+        type: mysql
